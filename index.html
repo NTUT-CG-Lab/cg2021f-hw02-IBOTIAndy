@@ -48,11 +48,11 @@
 			//有幾個項目就呼叫幾個 addChild
 			//addChild 要比 renderModal 先呼叫
 			so.addChild("視角可以移動及放大", 2, true);
-			so.addChild("在畫面上畫出左眼的邊框", 2, false);
+			so.addChild("在畫面上畫出左眼的邊框", 2, true);
 			so.addChild("複製左眼邊框變化到右眼", 2, false);
 			so.addChild("可選擇當前讀取角色或按鍵選擇上 / 下一隻角色", 1, false);
 			so.addChild("可儲存座標點檔案", 1, false);
-			so.addChild("回答問題", 2, false);
+			so.addChild("回答問題", 2, true);
 
 			//產生自評表，參數如下所示
 			so.renderModal(
@@ -93,6 +93,7 @@
 
 		let camera, scene, renderer, effect;
 		let mesh, helper;
+		let keyDrawing; //儲存當前繪製模式(1, 2, 3, 4)
 
 		const vpds = [];
 
@@ -105,7 +106,105 @@
 
 		});
 
-		function init() {
+		//鍵盤監聽
+		document.onkeydown = function(event){
+			console.log('key down: ' + event.key);
+			switch(event.keyCode){
+				case 49:    //Key1
+				    keyDrawing = 1;
+					break;
+				case 50:    //Key2
+				    keyDrawing = 2;
+					break;
+				case 51:    //Key3
+				    keyDrawing = 3;
+					break;
+				case 52:    //Key4
+				    keyDrawing = 4;
+					break;
+				case 81:    //KeyQ 將左眼的座標複製到右眼
+				    //keyDrawing = 4;
+					break;
+				case 83:    //KeyS 儲存線段的座標
+				    //keyDrawing = 4;
+					break;
+				case 65:    //KeyA 換上一位角色
+				    //keyDrawing = 4;
+					break;
+				case 68:    //KeyD 換下一位角色
+				    //keyDrawing = 4;
+					break;
+				default:
+				    console.log("the key not define. by " + event.key);
+					keyDrawing = 0;
+			}
+		}
+
+		var body = document.body;
+
+		function getPosition(e) {
+			var mouseWorld = new THREE.Vector3();
+			//取得左上位置(0, 0) 與網頁目前的寬高(width, height) #會根據網頁視窗大小變動
+			const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+			//console.log(left, top, width, height);
+			mouseWorld.set(	//抓取滑鼠在網頁視窗的相對位置 (不是整個畫布的位置)
+				((e.clientX - left + 1) / width) * 2 - 1,
+				-((e.clientY - top + 1) / height) * 2 + 1,
+				(camera.near + camera.far) / (camera.near - camera.far),
+			);
+			//console.log(mouseWorld);
+			mouseWorld.unproject(camera);
+			document.onclick = function () {    //抓取滑鼠點擊動作
+			    let lineName;
+				let pointX1, pointY1, pointZ1, pointX2, pointY2, pointZ2;
+				let material;
+			    let points = [];
+				let geometry;
+				let line;
+				//scene.add(line);
+                switch(keyDrawing){
+					case 1: //上 (左至右的線段)
+					    lineName = "Top";
+						material = new THREE.LineBasicMaterial({color: 0xff0000});    //紅色(255, 0, 0)
+						pointX1 = mouseWorld.x - 0.3;	pointY1 = mouseWorld.y;	pointZ1 = 20;
+						pointX2 = mouseWorld.x + 1.0;	pointY2 = mouseWorld.y;	pointZ2 = 20;
+					    break;
+					case 2: //右 (上至下的線段)
+					    lineName = "right";
+						material = new THREE.LineBasicMaterial({color: 0x00ff00});    //綠色(0, 255, 0)
+						pointX1 = mouseWorld.x;	pointY1 = mouseWorld.y - 1;	pointZ1 = 20;
+						pointX2 = mouseWorld.x;	pointY2 = mouseWorld.y + 1;	pointZ2 = 20;
+					    break;
+					case 3: //下 (左至右的線段)
+					    lineName = "bottom";
+						material = new THREE.LineBasicMaterial({color: 0xff0000});    //紅色(255, 0, 0)
+						pointX1 = mouseWorld.x - 0.3;	pointY1 = mouseWorld.y;	pointZ1 = 20;
+						pointX2 = mouseWorld.x + 1.0;	pointY2 = mouseWorld.y;	pointZ2 = 20;
+					    break;
+					case 4: //左 (上至下的線段)
+					    lineName = "left";
+						material = new THREE.LineBasicMaterial({color: 0x00ff00});    //綠色(0, 255, 0)
+						pointX1 = mouseWorld.x;	pointY1 = mouseWorld.y - 1;	pointZ1 = 20;
+						pointX2 = mouseWorld.x;	pointY2 = mouseWorld.y + 1;	pointZ2 = 20;
+					    break;
+					default:
+					    console.log("hi click. drawing is default.\n" + keyDrawing);
+				}				
+				points.push( new THREE.Vector3(pointX1, pointY1, pointZ1)); //給予線段第一個點的位置
+				points.push( new THREE.Vector3(pointX2, pointY2, pointZ2)); //給予線段第二個點的位置
+				geometry = new THREE.BufferGeometry().setFromPoints(points);    //產生線段
+				line = new THREE.Line(geometry, material);  //產生線段
+				line.name = lineName;   //給予id 以利刪除
+				scene.remove(scene.getObjectByName(lineName));  //先移除原先的線
+				scene.add(line);    //在scene(場景)加上一條線
+
+
+			}
+		}
+
+		body.addEventListener('mousemove', getPosition, false); //在body加上監聽(滑鼠移動時, 呼叫getPosition)
+
+		function init() {			
 
 			const container = document.createElement('div');
 			document.body.appendChild(container);
